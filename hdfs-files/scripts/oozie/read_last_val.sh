@@ -1,0 +1,1 @@
+echo "last-value=`hdfs dfs -cat /patents/data/last-value/* | head`"

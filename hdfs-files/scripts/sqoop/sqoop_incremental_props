@@ -1,0 +1,32 @@
+#
+# Options file for Sqoop import
+#
+
+# Specifies the tool being invoked
+import
+
+# Connect parameter and value
+--connect
+jdbc:postgresql://xxxx
+
+# Username parameter and value
+--username
+xxxx
+
+--password 
+'#xxxx@!?'
+
+--query 
+"select xxxx v where v.publication_id > 178477910 and $CONDITIONS"
+
+--map-column-java 
+'xmlelement=String'
+
+--target-dir 
+'/patents/data/raw-xml/'
+
+--incremental
+append
+
+--check-column
+publication_id

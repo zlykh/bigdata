@@ -1,0 +1,68 @@
+<workflow-app name="sqoop-incremental-spark-parquet-app" xmlns="uri:oozie:workflow:0.4">
+	<start to="sh-read-last-val-action"/>
+
+	<!-- reads last value from hdfs file (written by spark job) -->
+	<action name="sh-read-last-val-action">
+		<shell xmlns="uri:oozie:shell-action:0.1">
+			<job-tracker>${jobTracker}</job-tracker>
+			<name-node>${nameNode}</name-node>
+			<configuration>
+				<property>
+					<name>mapred.job.queue.name</name>
+					<value>${queueName}</value>
+				</property>
+			</configuration>
+			<exec>${read_last_val}</exec> 
+			<file>/patents/scripts/${read_last_val}</file>
+			<capture-output/>
+		</shell>
+		<ok to="sqoop-import"/>
+		<error to="kill"/>
+	</action>
+
+	<!-- incremental sqoop import -->
+	<action name="sqoop-import">
+		<sqoop xmlns="uri:oozie:sqoop-action:0.2">
+			<job-tracker>${jobTracker}</job-tracker>
+			<name-node>${nameNode}</name-node>
+			<prepare>
+				<delete path="/patents/data/raw-xml"/>
+			</prepare>
+			<configuration>
+				<property>
+					<name>mapred.job.queue.name</name>
+					<value>${queueName}</value>
+				</property>
+			</configuration>
+			<command>--options-file ${sqoop_incr_props} --last-value ${wf:actionData('sh-read-last-val-action')['last-value']} --direct -m 1</command>
+			<file>${sqoop_incr_props}</file>
+		</sqoop>
+		<ok to="spark-process"/>
+		<error to="kill"/>
+	</action>
+
+	<!-- spark job to save parquent and last processed value -->
+	<action name="spark-process">
+		<shell xmlns="uri:oozie:shell-action:0.1">
+			<job-tracker>${jobTracker}</job-tracker>
+			<name-node>${nameNode}</name-node>
+			<configuration>
+				<property>
+					<name>mapred.job.queue.name</name>
+					<value>${queueName}</value>
+				</property>
+			</configuration>
+			<exec>${spark_sh_props}</exec> 
+			<env-var>SPARK_MAJOR_VERSION=2</env-var>
+			<file>/patents/scripts/${spark_sh_props}</file>
+			<file>/patents/scripts/${spark_file}</file>
+		</shell>
+		<ok to="end"/>
+		<error to="kill"/>
+	</action>
+	
+	<kill name="kill">
+		<message>Sqoop failed, error message[${wf:errorMessage(wf:lastErrorNode())}]</message>
+	</kill>
+	<end name="end"/>
+</workflow-app>

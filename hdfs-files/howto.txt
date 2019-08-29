@@ -1,0 +1,65 @@
+1. Sqoop
+Incremental: sqoop-incr.txt
+sqoop --options-file sqoop-incr.txt --incremental append --check-column publication_id --last-value 178477913  --direct  -m 1
+Intitial: sqoop.txt
+sqoop --options-file sqoop.txt --direct  --delete-target-dir -m 1
+
+
+Useful commands:
+sqoop import --connect jdbc:postgresql://localhost:5432/xxx --table public.xxx --warehouse-dir /xxx
+sqoop import --connect jdbc:postgresql://localhost:5432/xxx --username xxx --password xxx --table xxxx --map-column-java 'id=String,company_id=String' --direct --target-dir '/xxxx/' -m 1 -- --schema public
+sqoop import --connect jdbc:postgresql://xxx/xxx --username xxx --password '#text_with_special_symbols@!?' --query 'SELECT xml.hranimka( 71329085, null ) where $CONDITIONS' --map-column-java 'f_patent_document=String' --direct --target-dir '/user/maria_dev/xxx/' -m 1
+sqoop --options-file sqoop.txt --direct     --delete-target-dir -m 1
+sqoop --options-file sqoop-incr.txt --incremental append --check-column publication_id --last-value 178477913  --direct  -m 1
+
+Troubleshooting:
+1) Put postgres jdbc driver to /usr/hdp/current/sqoop-client/lib/
+2) Problems connecting to host db, use ip from cmd -> ipcofnig. or set pg_nba.conf all all..
+3) Problems converting uuid type, use --map-column-java 'id=String'
+4) Need schema?  -- --schema public (two double slashes)
+5) Incremental import can be used with custom query
+
+2. HDFS shell
+1) List files: hdfs dfs -ls /user/maria_dev
+2) load file into hdfs: hdfs dfs -put myfile /user/maria_dev
+
+
+3. Spark
+export SPARK_MAJOR_VERSION=2 
+spark-sumbit <jarfile> --num-executors 1
+consider: --executor-cores 1 --driver-memory 1g --executor-memory 1g
+
+Troubleshooting:
+1) HDP 2.5 needs scala 2.11 (restart sbt when version changed)
+2) No jar? use spark-shell --packages com.databricks:spark-xml_2.11:0.5.0
+
+4. Oozie
+job.properties
+read-last-val.sh
+workflow.xml
+Put workflow and scripts into folder specified in job.properties (job.prop inside local filesystem)
+oozie job -oozie http://localhost:11000/oozie -config job.properties -run
+
+
+Troubleshooting:
+1) Default filename should be workflow.xml
+2) Use sh script to check action: 
+script1: echo "`hdfs dfs -cat /user/maria_dev/xxx/last-value/* | head`" > /tmp/output2
+workflow: <argument>${wf:actionData('sh-read-last-val-action')['last-value']}</argument>
+script2: echo "$1 hi" > /tmp/output2
+3) find logs
+oozie job -info xx
+mapred job -list-attempt-ids xx MAP completed
+mapred job -logs xx yy
+4) strange error system exit(1) no more traces
+put postgresql driver to /user/oozie/share/lib/sqoop and spark
+restart oozie!!!
+5) grep all logs (e.g. if hsell reurns 1) yarn logs -applicationId application_1559674524269_0042 > logs (app id replace job_xxxx)
+6) no main class - make sure to add <file> to shell action with jar
+7) endless stage 0 -> remove yarn master from code
+
+5. Zeppelin
+
+Troubleshooting:
+1) Missing functions? import sqlContext.implicits._
+2) context = sc. Readfile = sc.textFile("/xxx/p.xml")
